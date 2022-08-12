@@ -3,7 +3,16 @@
 import XCTVapor
 
 final class FullErrorTests: XCTestCase {
-
+    
+    static var allTests = [
+        ("testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse", testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse),
+        ("testValidationErrorShouldReturnCorrectErrorFailures", testValidationErrorShouldReturnCorrectErrorFailures),
+        ("testValidationErrorWithIncorrectDescription", testValidationErrorWithIncorrectDescription),
+        ("testValidationErrorWithoutDescription", testValidationErrorWithoutDescription),
+        ("testAbortError", testAbortError),
+        ("testAnyError", testAnyError),
+    ]
+    
     func testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse() async throws {
         let app = Application(.testing)
         defer { app.shutdown() }
