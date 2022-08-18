@@ -62,9 +62,9 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             reason = "Validation errors occurs"
             status = .badRequest
         case let abort as AbortError:
-            code = "AbortError"
+            code = abort.reason
             headers = abort.headers
-            reason = abort.reason
+            reason = abort.reason + "."
             status = abort.status
         case let debug as DebuggableError:
             code = req.application.environment.isRelease
