@@ -1,19 +1,21 @@
 @testable import FullError
+import FullErrorModel
 @testable import Vapor
 import XCTVapor
 
 final class FullErrorTests: XCTestCase {
     
     static var allTests = [
-        ("testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse", testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse),
-        ("testValidationErrorShouldReturnCorrectErrorFailures", testValidationErrorShouldReturnCorrectErrorFailures),
+        ("testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse", testErrorTheСorrespondingCodeErrorShouldReturnErrorResponse),
+        ("testVerificationsErrorShouldReturnErrorFailures", testVerificationsErrorShouldReturnErrorFailures),
+        ("testValidationErrorShouldReturnCorrectErrorFailures", testValidationErrorShouldReturnErrorFailures),
         ("testValidationErrorWithIncorrectDescription", testValidationErrorWithIncorrectDescription),
         ("testValidationErrorWithoutDescription", testValidationErrorWithoutDescription),
         ("testAbortError", testAbortError),
         ("testAnyError", testAnyError),
     ]
     
-    func testErrorTheСorrespondingCodeErrorShouldReturnCorrectErrorResponse() async throws {
+    func testErrorTheСorrespondingCodeErrorShouldReturnErrorResponse() async throws {
         let app = Application(.testing)
         defer { app.shutdown() }
         
@@ -31,7 +33,36 @@ final class FullErrorTests: XCTestCase {
         XCTAssertEqual(error.reason, TestError.anyError.reason)
     }
     
-    func testValidationErrorShouldReturnCorrectErrorFailures() async throws {
+    func testVerificationsErrorShouldReturnErrorFailures() async throws {
+        let app = Application(.testing)
+        defer { app.shutdown() }
+        
+        // given
+        let request = Request(application: app, on: app.eventLoopGroup.next())
+        let failure1 = ValidationFailure(field: "name", code: "nameIsEmpty", reason: "Name is empty")
+        let failure2 = ValidationFailure(field: "email", code: "emailIsNotFound", reason: "Email is not found")
+        let failures = VerificationsError(failures: [failure1, failure2])
+        
+        // when
+        let middleware = FullErrorMiddleware()
+        let response = await middleware.body(req: request, error: failures)
+        let error = try response.content.decode(ErrorResponse.self)
+        
+        // then
+        XCTAssertEqual(response.status, .badRequest)
+        XCTAssertEqual(error.code, "ValidationError")
+        XCTAssertEqual(error.reason, "Validation errors occurs.")
+        
+        XCTAssertEqual(error.failures![0].field, "name")
+        XCTAssertEqual(error.failures![0].code, "nameIsEmpty")
+        XCTAssertEqual(error.failures![0].reason, "Name is empty")
+        
+        XCTAssertEqual(error.failures![1].field, "email")
+        XCTAssertEqual(error.failures![1].code, "emailIsNotFound")
+        XCTAssertEqual(error.failures![1].reason, "Email is not found")
+    }
+    
+    func testValidationErrorShouldReturnErrorFailures() async throws {
         let app = Application(.testing)
         defer { app.shutdown() }
         
@@ -53,7 +84,7 @@ final class FullErrorTests: XCTestCase {
         // then
         XCTAssertEqual(response.status, .badRequest)
         XCTAssertEqual(error.code, "ValidationError")
-        XCTAssertEqual(error.reason, "Validation errors occurs")
+        XCTAssertEqual(error.reason, "Validation errors occurs.")
         
         XCTAssertEqual(error.failures![0].field, "name")
         XCTAssertEqual(error.failures![0].code, "nameIsRequired")
@@ -82,7 +113,7 @@ final class FullErrorTests: XCTestCase {
         // then
         XCTAssertEqual(response.status, .badRequest)
         XCTAssertEqual(error.code, "ValidationError")
-        XCTAssertEqual(error.reason, "Validation errors occurs")
+        XCTAssertEqual(error.reason, "Validation errors occurs.")
         
         XCTAssertEqual(error.failures![0].field, "name")
         XCTAssertEqual(error.failures![0].code, "")
@@ -112,7 +143,7 @@ final class FullErrorTests: XCTestCase {
         // then
         XCTAssertEqual(response.status, .badRequest)
         XCTAssertEqual(error.code, "ValidationError")
-        XCTAssertEqual(error.reason, "Validation errors occurs")
+        XCTAssertEqual(error.reason, "Validation errors occurs.")
         
         XCTAssertEqual(error.failures![0].field, "name")
         XCTAssertEqual(error.failures![0].code, "")
@@ -133,8 +164,8 @@ final class FullErrorTests: XCTestCase {
         
         // then
         XCTAssertEqual(response.status, .notFound)
-        XCTAssertEqual(error.code, "AbortError")
-        XCTAssertEqual(error.reason, "Is not found")
+        XCTAssertEqual(error.code, "Is not found")
+        XCTAssertEqual(error.reason, "Is not found.")
     }
     
     func testAnyError() async throws {

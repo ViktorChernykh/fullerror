@@ -1,7 +1,9 @@
 import Vapor
+import FullErrorModel
 
 /// Captures all errors and transforms them into an internal server error HTTP response.
-public struct FullErrorMiddleware: AsyncMiddleware {        
+public struct FullErrorMiddleware: AsyncMiddleware {
+    
     // MARK: - Init
     public init() { }
     
@@ -14,17 +16,17 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             return await self.body(req: req, error: error)
         }
     }
-
+    
     /// Error-handling closure.
     internal func body(req: Request, error: Error) async -> Response {
-
+        
         // variables to determine
         let code: String
         let headers: HTTPHeaders
         let reason: String
         let status: HTTPStatus
         lazy var failures: [ValidationFailure] = []
-
+        
         // inspect the error type
         switch error {
         case let custom as CodeError:
@@ -32,8 +34,13 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             headers = custom.headers
             reason = custom.reason
             status = custom.status
+        case let validation as VerificationsError:
+            failures = validation.failures
+            code = "ValidationError"
+            headers = [:]
+            reason = "Validation errors occurs."
+            status = .badRequest
         case let validation as Vapor.ValidationsError:
-
             for failure in validation.failures {
                 var items = [String]()
                 if let description = failure.customFailureDescription {
@@ -56,10 +63,9 @@ public struct FullErrorMiddleware: AsyncMiddleware {
                         reason: failure.result.failureDescription ?? ""))
                 }
             }
-            
             code = "ValidationError"
             headers = [:]
-            reason = "Validation errors occurs"
+            reason = "Validation errors occurs."
             status = .badRequest
         case let abort as AbortError:
             code = abort.reason
@@ -89,14 +95,14 @@ public struct FullErrorMiddleware: AsyncMiddleware {
         }
         
         req.logger.report(error: error)
-
+        
         // Attempt to serialize the error to json.
         do {
             let errorResponse = ErrorResponse(code: code, reason: reason, failures: failures)
             let body = try Response.Body(data: JSONEncoder().encode(errorResponse))
             let response = Response(status: status, headers: headers, body: body)
             response.headers.replaceOrAdd(name: .contentType, value: "application/json; charset=utf-8")
-
+            
             return response
         } catch {
             let body = Response.Body(string: "Oops: \(error)")
