@@ -1,11 +1,11 @@
 
 enum ValidateFailureDescribe: String {
-    case nameIsRequired
+    case nameLengthMustBeBetween
 
     var codeReason: String {
         switch self {
-        case .nameIsRequired:
-            return "\(self.rawValue):Name is required"
+        case .nameLengthMustBeBetween:
+            return "\(self.rawValue):Name length must be between 3 and 32:3, 32"
         }
     }
 }

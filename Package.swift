@@ -13,7 +13,7 @@ let package = Package(
     dependencies: [
         // 💧 A server-side Swift web framework.
         .package(url: "https://github.com/vapor/vapor.git", from: "4.56.0"),
-        .package(url: "https://github.com/ViktorChernykh/fullerror-model.git", from: "1.0.0"),
+        .package(url: "https://github.com/ViktorChernykh/fullerror-model.git", from: "2.0.0"),
     ],
     targets: [
         .target(name: "FullError", dependencies: [

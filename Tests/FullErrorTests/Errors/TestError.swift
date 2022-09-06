@@ -2,10 +2,10 @@ import FullError
 import Vapor
 
 enum TestError: CodeError {
-    case anyError
+    case emailIsNotFound([String] = [])
     var status: HTTPStatus {
         switch self {
-        case .anyError:
+        case .emailIsNotFound:
             return .badRequest
         }
     }
@@ -14,8 +14,18 @@ enum TestError: CodeError {
     }
     var reason: String {
         switch self {
-        case .anyError:
-            return "There was any error."
+        case .emailIsNotFound(let values):
+            guard values.count == 1 else {
+                fatalError("TestError.emailIsNotFound - values count is incorrect.")
+            }
+            return "Email '\(values[0])' is not found."
+        }
+    }
+    
+    var values: [String] {
+        switch self {
+        case .emailIsNotFound(let values):
+            return values
         }
     }
 }
