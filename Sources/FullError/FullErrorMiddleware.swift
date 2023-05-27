@@ -76,7 +76,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
         case let abort as AbortError:
             code = abort.reason
             headers = abort.headers
-            reason = abort.reason + "."
+            reason = abort.reason
             status = abort.status
             values = []
         case let debug as DebuggableError:
