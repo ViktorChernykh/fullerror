@@ -25,7 +25,6 @@ public struct FullErrorMiddleware: AsyncMiddleware {
         let headers: HTTPHeaders
         let reason: String
         let status: HTTPStatus
-        let values: [String]
         lazy var failures: [ValidationFailure] = []
         
         // inspect the error type
@@ -35,14 +34,12 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             headers = custom.headers
             reason = custom.reason
             status = custom.status
-            values = custom.values
         case let validation as VerificationsError:
             failures = validation.failures
             code = "ValidationError"
             headers = [:]
             reason = "Validation errors occurs."
             status = .badRequest
-            values = []
         case let validation as Vapor.ValidationsError:
             for failure in validation.failures {
                 var items = [String]()
@@ -52,33 +49,29 @@ public struct FullErrorMiddleware: AsyncMiddleware {
                         failures.append(ValidationFailure(
                             field: failure.key.stringValue,
                             code: items[0],
-                            reason: items[1],
-                            values: items[2].components(separatedBy: ", ")))
+                            reason: items[1]))
                     } else {
                         failures.append(ValidationFailure(
                             field: failure.key.stringValue,
                             code: "",
-                            reason: failure.customFailureDescription!, values: []))
+                            reason: failure.customFailureDescription!))
                     }
                 } else {
                     failures.append(ValidationFailure(
                         field: failure.key.stringValue,
                         code: "",
-                        reason: failure.result.failureDescription ?? "",
-                        values: []))
+                        reason: failure.result.failureDescription ?? ""))
                 }
             }
             code = "ValidationError"
             headers = [:]
             reason = "Validation errors occurs."
             status = .badRequest
-            values = []
         case let abort as AbortError:
             code = abort.reason
             headers = abort.headers
             reason = abort.reason
             status = abort.status
-            values = []
         case let debug as DebuggableError:
             code = req.application.environment.isRelease
             ? "internalApplicationError"
@@ -90,7 +83,6 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             ? "The operation failed due to a server error."
             : debug.reason
             status = .internalServerError
-            values = []
         default:
             code = "internalApplicationError"
             headers = [:]
@@ -100,14 +92,13 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             ? "The operation failed due to a server error."
             : String(describing: error)
             status = .internalServerError
-            values = []
         }
         
         req.logger.report(error: error)
         
         // Attempt to serialize the error to json.
         do {
-            let errorResponse = ErrorResponse(code: code, reason: reason, values: values, failures: failures)
+            let errorResponse = ErrorResponse(code: code, reason: reason, failures: failures)
             let body = try Response.Body(data: JSONEncoder().encode(errorResponse))
             let response = Response(status: status, headers: headers, body: body)
             response.headers.replaceOrAdd(name: .contentType, value: "application/json; charset=utf-8")
@@ -122,4 +113,3 @@ public struct FullErrorMiddleware: AsyncMiddleware {
         }
     }
 }
-

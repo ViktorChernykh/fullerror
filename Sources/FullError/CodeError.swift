@@ -5,6 +5,5 @@ public protocol CodeError: AbortError {
     
     /// The code for translate this error.
     var code: String { get }
-    var values: [String] { get }
 }
 
