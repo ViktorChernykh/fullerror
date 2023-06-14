@@ -45,7 +45,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
                 var items = [String]()
                 if let description = failure.customFailureDescription {
                     items = description.split(separator: ":", maxSplits: 2).map { String($0) }
-                    if items.count == 3 {
+                    if items.count == 2 {
                         failures.append(ValidationFailure(
                             field: failure.key.stringValue,
                             code: items[0],
