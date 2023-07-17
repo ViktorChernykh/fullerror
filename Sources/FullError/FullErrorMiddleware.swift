@@ -3,11 +3,9 @@ import FullErrorModel
 
 /// Captures all errors and transforms them into an internal server error HTTP response.
 public struct FullErrorMiddleware: AsyncMiddleware {
-	let forWeb: Bool
+
     // MARK: - Init
-    public init(forWeb: Bool = false) {
-		self.forWeb = forWeb
-	}
+    public init() { }
     
     // MARK: - Methods
     /// See `Middleware`.
@@ -70,10 +68,6 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             reason = "Validation errors occurs."
             status = .badRequest
         case let abort as AbortError:
-			if forWeb, abort.status == .notFound {
-				req.logger.report(error: error)
-				return req.redirect(to: "/404")
-			}
             code = abort.reason
             headers = abort.headers
             reason = abort.reason
@@ -98,10 +92,6 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             ? "The operation failed due to a server error."
             : String(describing: error)
             status = .internalServerError
-			if forWeb {
-				req.logger.report(error: error)
-				return req.redirect(to: "/500")
-			}
         }
         
         req.logger.report(error: error)
