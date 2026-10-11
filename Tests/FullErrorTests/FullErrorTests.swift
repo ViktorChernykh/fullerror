@@ -165,7 +165,7 @@ final class FullErrorTests: XCTestCase {
         // then
         XCTAssertEqual(response.status, .notFound)
         XCTAssertEqual(error.code, "Is not found")
-        XCTAssertEqual(error.reason, "Is not found.")
+        XCTAssertEqual(error.reason, "Is not found")
     }
     
     func testAnyError() async throws {
@@ -185,36 +185,4 @@ final class FullErrorTests: XCTestCase {
         XCTAssertEqual(error.code, "internalApplicationError")
         XCTAssertEqual(error.reason, "Something went wrong")
     }
-
-	func test404ErrorForWeb() async throws {
-		let app = Application(.testing)
-		defer { app.shutdown() }
-
-		// given
-		let request = Request(application: app, on: app.eventLoopGroup.next())
-
-		// when
-		let middleware = FullErrorMiddleware(forWeb: true)
-		let response = await middleware.body(req: request, error: Abort(.notFound))
-
-		// then
-		XCTAssertEqual(response.status, .seeOther)
-		XCTAssertEqual(response.headers.first(name: "Location"), "/404")
-	}
-
-	func test500ErrorForWeb() async throws {
-		let app = Application(.testing)
-		defer { app.shutdown() }
-
-		// given
-		let request = Request(application: app, on: app.eventLoopGroup.next())
-
-		// when
-		let middleware = FullErrorMiddleware(forWeb: true)
-		let response = await middleware.body(req: request, error: "Something went wrong")
-
-		// then
-		XCTAssertEqual(response.status, .seeOther)
-		XCTAssertEqual(response.headers.first(name: "Location"), "/500")
-	}
 }

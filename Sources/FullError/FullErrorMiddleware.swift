@@ -3,9 +3,23 @@ import FullErrorModel
 
 /// Captures all errors and transforms them into an internal server error HTTP response.
 public struct FullErrorMiddleware: AsyncMiddleware {
+	private let validationParameters: @Sendable (
+		_ field: String,
+		_ code: String
+	) -> [String: ErrorParameterValueType]?
 
     // MARK: - Init
-    public init() { }
+	/// Creates middleware with values for parsed custom validation codes.
+	///
+	/// - Parameter validationParameters: Values for a field and code.
+	public init(
+		validationParameters: @escaping @Sendable (
+			_ field: String,
+			_ code: String
+		) -> [String: ErrorParameterValueType]? = { _, _ in nil }
+	) {
+		self.validationParameters = validationParameters
+	}
     
     // MARK: - Methods
     /// See `Middleware`.
@@ -25,6 +39,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
         let headers: HTTPHeaders
         let reason: String
         let status: HTTPStatus
+		let parameters: [String: ErrorParameterValueType]?
 		let source: ErrorSource
         lazy var failures: [ValidationFailure] = []
         
@@ -35,6 +50,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             headers = custom.headers
             reason = custom.reason
             status = custom.status
+			parameters = custom.parameters
 			source = .capture()
         case let validation as VerificationsError:
             failures = validation.failures
@@ -42,6 +58,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             headers = [:]
             reason = "Validation errors occurs."
             status = .badRequest
+			parameters = nil
 			source = .capture()
         case let validation as Vapor.ValidationsError:
             for failure in validation.failures {
@@ -49,10 +66,15 @@ public struct FullErrorMiddleware: AsyncMiddleware {
                 if let description = failure.customFailureDescription {
                     items = description.split(separator: ":", maxSplits: 2).map { String($0) }
                     if items.count == 2 {
+						let customCode: String = items[0]
+						let values: [String: ErrorParameterValueType]? = customCode.isEmpty
+							? nil
+							: validationParameters(failure.key.stringValue, customCode)
                         failures.append(ValidationFailure(
                             field: failure.key.stringValue,
-                            code: items[0],
-                            reason: items[1]))
+                            code: customCode,
+							reason: items[1],
+							parameters: values))
                     } else {
                         failures.append(ValidationFailure(
                             field: failure.key.stringValue,
@@ -70,12 +92,14 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             headers = [:]
             reason = "Validation errors occurs."
             status = .badRequest
+			parameters = nil
 			source = .capture()
         case let abort as AbortError:
             code = abort.reason
             headers = abort.headers
             reason = abort.reason
             status = abort.status
+			parameters = nil
 			source = .capture()
         case let debug as DebuggableError:
             code = req.application.environment.isRelease
@@ -88,6 +112,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             ? "The operation failed due to a server error."
             : debug.reason
             status = .internalServerError
+			parameters = nil
 			source = debug.source ?? .capture()
         default:
             code = "internalApplicationError"
@@ -98,6 +123,7 @@ public struct FullErrorMiddleware: AsyncMiddleware {
             ? "The operation failed due to a server error."
             : String(describing: error)
             status = .internalServerError
+			parameters = nil
 			source = .capture()
         }
         
@@ -114,7 +140,12 @@ public struct FullErrorMiddleware: AsyncMiddleware {
 
         // Attempt to serialize the error to json.
         do {
-            let errorResponse = ErrorResponse(code: code, reason: reason, failures: failures)
+            let errorResponse = ErrorResponse(
+				code: code,
+				reason: reason,
+				failures: failures,
+				parameters: parameters
+			)
             let body = try Response.Body(data: JSONEncoder().encode(errorResponse))
             let response = Response(status: status, headers: headers, body: body)
             response.headers.replaceOrAdd(name: .contentType, value: "application/json; charset=utf-8")

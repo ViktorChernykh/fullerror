@@ -6,6 +6,7 @@ extension ValidationFailure {
         self.init(
             field: field,
             code: error.code,
-            reason: error.reason)
+            reason: error.reason,
+			parameters: error.parameters)
     }
 }
